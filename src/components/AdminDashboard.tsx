@@ -37,6 +37,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
@@ -66,11 +67,13 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   }, [isAdminUser]);
 
   const handleLogin = async () => {
+    setLoginError(null);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed', error);
+      setLoginError(error.message || 'Login failed. Please check if popups are blocked.');
     }
   };
 
@@ -90,7 +93,12 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
         <div className="max-w-md w-full bg-sham-surface border border-sham-border rounded-[40px] p-12 text-center shadow-2xl">
           <BarChart3 className="w-16 h-16 text-gold-500 mx-auto mb-6" />
           <h2 className="text-4xl font-serif gold-text-gradient mb-4">Admin Portal</h2>
-          <p className="text-gold-500/60 mb-8">Please sign in with your authorized Google account to manage Shamiyat.</p>
+          <p className="text-gold-500/60 mb-8">Sign in with Google. If authorized, you can manage menu items with names and prices in <b>DH</b>.</p>
+          {loginError && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
+              {loginError}
+            </div>
+          )}
           <button 
             onClick={handleLogin}
             className="w-full py-4 gold-gradient text-sham-dark rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
@@ -113,10 +121,11 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
       <div className="h-full flex flex-col items-center justify-center bg-sham-dark p-8 text-center">
         <AlertCircle className="w-20 h-20 text-red-500 mb-6" />
         <h2 className="text-4xl font-serif text-white mb-4">Access Denied</h2>
-        <p className="text-gray-400 mb-8 max-w-md">Your account ({user.email}) is not authorized for the Shamiyat Admin Panel. Contact the system administrator.</p>
+        <p className="text-gray-400 mb-2 max-w-md text-lg">Your account ({user.email}) is not an authorized administrator.</p>
+        <p className="text-gold-500/60 mb-8 max-w-sm text-sm">To gain access, ensure your User UID (<b>{user.uid}</b>) is added to the <b>admins</b> collection in Firestore.</p>
         <div className="flex gap-4">
-          <button onClick={handleLogout} className="px-8 py-4 bg-sham-surface border border-sham-border rounded-xl font-bold">Sign Out</button>
-          <button onClick={onBack} className="px-8 py-4 gold-gradient text-sham-dark rounded-xl font-bold">Back to Kiosk</button>
+          <button onClick={handleLogout} className="px-8 py-4 bg-sham-surface border border-sham-border rounded-xl font-bold hover:bg-white/5 transition-all">Sign Out</button>
+          <button onClick={onBack} className="px-8 py-4 gold-gradient text-sham-dark rounded-xl font-bold hover:scale-105 transition-all">Back to Kiosk</button>
         </div>
       </div>
     );
@@ -482,7 +491,7 @@ function MenuManagement({ items, showForm, setShowForm }: { items: MenuItem[], s
                 </div>
 
                 <div className="space-y-2">
-                   <label className="text-gold-500/60 uppercase text-xs tracking-widest font-bold">Price (MAD)</label>
+                   <label className="text-gold-500/60 uppercase text-xs tracking-widest font-bold">Price (DH)</label>
                    <input 
                     required
                     type="number"

@@ -6,10 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(price: number) {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'MAD',
-  }).format(price);
+  return `${price.toLocaleString('fr-FR')} DH`;
 }
 
 export function generateOrderNumber() {
