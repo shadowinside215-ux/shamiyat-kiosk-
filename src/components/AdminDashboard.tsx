@@ -42,10 +42,8 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
-        // Double check admin doc
-        const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
-        setIsAdminUser(adminDoc.exists());
+      if (currentUser && currentUser.email === 'dragonballsam86@gmail.com') {
+        setIsAdminUser(true);
       } else {
         setIsAdminUser(false);
       }

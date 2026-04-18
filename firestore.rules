@@ -5,9 +5,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Role check - relies on an admins collection
+    // Role check - restricted to owner's email
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && 
+             request.auth.token.email == "dragonballsam86@gmail.com" && 
+             request.auth.token.email_verified == true;
     }
 
     // Menu Item Validation
