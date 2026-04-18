@@ -14,9 +14,10 @@ service cloud.firestore {
 
     // Menu Item Validation
     function isValidMenuItem(data) {
-      return data.keys().hasAll(['name', 'price', 'category', 'image', 'createdAt', 'isAvailable'])
-          && data.keys().size() == 6
+      return data.keys().hasAll(['name', 'price', 'category', 'image', 'createdAt', 'isAvailable', 'description'])
+          && data.keys().size() == 7
           && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+          && data.description is string && data.description.size() <= 1000
           && data.price is number && data.price >= 0
           && data.category in ['Shawarma', 'Grills', 'Sandwiches', 'Sides', 'Desserts', 'Drinks']
           && data.image is string && data.image.size() <= 2000

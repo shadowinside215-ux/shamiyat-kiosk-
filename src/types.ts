@@ -19,6 +19,8 @@ export interface CartItem extends MenuItem {
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
+export const CATEGORIES_LIST: Category[] = ['Shawarma', 'Grills', 'Sandwiches', 'Sides', 'Desserts', 'Drinks'];
+
 export interface Order {
   id: string;
   orderNumber: string;
