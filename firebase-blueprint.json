@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "MenuItem": {
+      "title": "Menu Item",
+      "description": "A food or drink item in the restaurant menu",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string", "enum": ["Shawarma", "Grills", "Sandwiches", "Sides", "Desserts", "Drinks"] },
+        "image": { "type": "string", "format": "uri" },
+        "isAvailable": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "category", "image"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order from the kiosk",
+      "type": "object",
+      "properties": {
+        "orderNumber": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "preparing", "ready", "completed", "cancelled"] },
+        "type": { "type": "string", "enum": ["dine-in", "takeaway"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["orderNumber", "items", "total", "status", "type", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/menu": {
+      "schema": "MenuItem",
+      "description": "Collection of menu items"
+    },
+    "/orders": {
+      "schema": "Order",
+      "description": "Collection of customer orders"
+    }
+  }
+}

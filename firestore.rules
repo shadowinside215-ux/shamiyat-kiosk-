@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Role check - relies on an admins collection
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Menu Item Validation
+    function isValidMenuItem(data) {
+      return data.keys().hasAll(['name', 'price', 'category', 'image', 'createdAt', 'isAvailable'])
+          && data.keys().size() == 6
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+          && data.price is number && data.price >= 0
+          && data.category in ['Shawarma', 'Grills', 'Sandwiches', 'Sides', 'Desserts', 'Drinks']
+          && data.image is string && data.image.size() <= 2000
+          && data.createdAt == request.time
+          && data.isAvailable is bool;
+    }
+
+    // Order Validation
+    function isValidOrder(data) {
+      return data.keys().hasAll(['orderNumber', 'items', 'total', 'status', 'type', 'createdAt'])
+          && data.keys().size() == 6
+          && data.orderNumber is string && data.orderNumber.size() == 3
+          && data.items is list && data.items.size() > 0 && data.items.size() <= 50
+          && data.total is number && data.total >= 0
+          && (data.status == 'pending')
+          && data.type in ['dine-in', 'takeaway']
+          && data.createdAt == request.time;
+    }
+
+    // Menu Collection Rules
+    match /menu/{itemId} {
+      // Menu is publicly readable for the kiosk
+      allow read: if true; 
+      
+      // Only Admin can write to menu
+      allow create: if isAdmin() && isValidMenuItem(request.resource.data);
+      allow update: if isAdmin() 
+                    && (
+                      // Only specific fields allowed for update
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'price', 'category', 'image', 'isAvailable', 'description'])
+                    );
+      allow delete: if isAdmin();
+    }
+
+    // Orders Collection Rules
+    match /orders/{orderId} {
+      // Allow customers to place orders (unauthenticated for kiosk mode)
+      allow create: if isValidOrder(request.resource.data);
+      
+      // Only Admin can see and manage orders
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      
+      allow update: if isAdmin() 
+                    && (
+                      // Admin updating status
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                      && request.resource.data.status in ['preparing', 'ready', 'completed', 'cancelled', 'pending']
+                    );
+    }
+    
+    // Admins Collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn() && request.auth.uid == adminId;
+      allow write: if false; // Managed manually or via console
+    }
+  }
+}
