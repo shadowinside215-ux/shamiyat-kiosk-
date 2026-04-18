@@ -43,6 +43,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [menuFilter, setMenuFilter] = useState<Category | 'All'>('All');
 
   useEffect(() => {
     if (notification) {
@@ -53,8 +54,10 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
+      console.log('Auth state changed:', currentUser?.email);
       setUser(currentUser);
-      if (currentUser && currentUser.email === 'dragonballsam86@gmail.com') {
+      if (currentUser && currentUser.email?.toLowerCase() === 'dragonballsam86@gmail.com') {
+        console.log('Admin user identified:', currentUser.email);
         setIsAdminUser(true);
       } else {
         setIsAdminUser(false);
@@ -68,8 +71,21 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   useEffect(() => {
     if (!isAdminUser) return;
     
-    const unsubOrders = orderService.subscribe(setOrders);
-    const unsubMenu = menuService.subscribe(setMenuItems);
+    console.log('Starting data subscriptions for admin...');
+    const unsubOrders = orderService.subscribe(setOrders, (err) => {
+      console.error('Orders subscription failed:', err);
+      if (err.message?.includes('permission-denied')) {
+        setNotification({ 
+          message: 'Orders Access Denied. Please ensure your email is dragonballsam86@gmail.com and you are logged in.', 
+          type: 'error' 
+        });
+      }
+    });
+
+    const unsubMenu = menuService.subscribe(setMenuItems, (err) => {
+      console.error('Menu subscription failed:', err);
+    });
+
     return () => {
       unsubOrders();
       unsubMenu();
@@ -128,14 +144,33 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
 
   if (!isAdminUser) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-sham-dark p-8 text-center">
-        <AlertCircle className="w-20 h-20 text-red-500 mb-6" />
-        <h2 className="text-4xl font-serif text-white mb-4">Access Denied</h2>
-        <p className="text-gray-400 mb-2 max-w-md text-lg">Your account ({user.email}) is not an authorized administrator.</p>
-        <p className="text-gold-500/60 mb-8 max-w-sm text-sm">To gain access, ensure your User UID (<b>{user.uid}</b>) is added to the <b>admins</b> collection in Firestore.</p>
+      <div className="h-full flex flex-col items-center justify-center bg-sham-dark text-center p-8">
+        <div className="w-24 h-24 bg-red-600/10 rounded-full flex items-center justify-center mb-8 border border-red-600/20">
+          <AlertCircle className="w-12 h-12 text-red-500" />
+        </div>
+        <h1 className="text-4xl font-serif gold-text-gradient font-bold mb-4">Access Restricted</h1>
+        <div className="bg-sham-surface p-8 rounded-[32px] border border-sham-border max-w-lg w-full mb-8">
+          <p className="text-gray-400 mb-6 text-lg">Your account is not recognized as an administrator.</p>
+          
+          <div className="space-y-4 text-left">
+            <div className="p-4 bg-sham-dark rounded-xl border border-white/5">
+              <p className="text-[10px] text-gold-500/40 uppercase tracking-widest mb-1">Logged In As</p>
+              <p className="text-sm font-mono text-gold-200">{user.email}</p>
+            </div>
+            <div className="p-4 bg-sham-dark rounded-xl border border-white/5">
+              <p className="text-[10px] text-gold-500/40 uppercase tracking-widest mb-1">User ID (UID)</p>
+              <p className="text-sm font-mono text-gold-200">{user.uid}</p>
+            </div>
+          </div>
+
+          <p className="text-gold-500/40 text-xs mt-8 uppercase tracking-widest leading-relaxed">
+            Only <b>dragonballsam86@gmail.com</b> is permitted access to the control panel.
+          </p>
+        </div>
+
         <div className="flex gap-4">
-          <button onClick={handleLogout} className="px-8 py-4 bg-sham-surface border border-sham-border rounded-xl font-bold hover:bg-white/5 transition-all">Sign Out</button>
-          <button onClick={onBack} className="px-8 py-4 gold-gradient text-sham-dark rounded-xl font-bold hover:scale-105 transition-all">Back to Kiosk</button>
+          <button onClick={handleLogout} className="px-10 py-5 bg-sham-surface border border-sham-border rounded-2xl font-bold hover:bg-white/5 transition-all uppercase tracking-widest text-xs">Sign Out</button>
+          <button onClick={onBack} className="px-10 py-5 gold-gradient text-sham-dark rounded-2xl font-bold hover:scale-105 transition-all uppercase tracking-widest text-xs shadow-xl shadow-gold-500/10">Back to Kiosk</button>
         </div>
       </div>
     );
@@ -198,9 +233,27 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
             <Utensils className="w-6 h-6" />
             Menu Management
           </button>
+          
+          <div className="pt-4">
+            <button
+              onClick={onBack}
+              className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-red-400 hover:bg-red-500/10"
+            >
+              <LogOut className="w-6 h-6" />
+              Exit Admin Panel
+            </button>
+          </div>
         </nav>
 
         <div className="p-6 border-t border-sham-border flex flex-col gap-4">
+          <div className="bg-sham-dark p-4 rounded-2xl border border-gold-500/10 mb-2">
+            <p className="text-[10px] text-gold-500/40 uppercase tracking-widest mb-1">Session Data</p>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <p className="text-[10px] font-bold text-gold-200">ADMIN: {user.email}</p>
+            </div>
+            <p className="text-[9px] text-gold-500/30 mt-1 truncate">UID: {user.uid}</p>
+          </div>
           <div className="flex items-center gap-3 px-2">
             <img src={user.photoURL || ''} alt="" className="w-10 h-10 rounded-full border border-gold-500/20" />
             <div className="overflow-hidden">
@@ -221,13 +274,16 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-12 bg-[#0a0a0a]">
         {activeTab === 'orders' ? (
-          <OrderManagement orders={orders} />
+          <OrderManagement orders={orders} onBack={onBack} />
         ) : (
           <MenuManagement 
             items={menuItems} 
             showForm={showAddForm} 
             setShowForm={setShowAddForm}
             setNotification={setNotification}
+            onBack={onBack}
+            filter={menuFilter}
+            setFilter={setMenuFilter}
           />
         )}
       </div>
@@ -235,7 +291,7 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   );
 }
 
-function OrderManagement({ orders }: { orders: Order[] }) {
+function OrderManagement({ orders, onBack }: { orders: Order[], onBack: () => void }) {
   const updateStatus = async (id: string, status: Order['status']) => {
     try {
       await orderService.updateStatus(id, status);
@@ -261,6 +317,13 @@ function OrderManagement({ orders }: { orders: Order[] }) {
           <h2 className="text-4xl font-serif gold-text-gradient mb-2">Live Orders</h2>
           <p className="text-gold-500/40 uppercase tracking-widest text-sm">Real-time kiosk stream</p>
         </div>
+        <button 
+          onClick={onBack}
+          className="px-8 py-4 bg-red-600/10 border border-red-600/20 text-red-500 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+        >
+          <LogOut className="w-5 h-5" />
+          Exit
+        </button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
@@ -361,13 +424,21 @@ function MenuManagement({
   items, 
   showForm, 
   setShowForm,
-  setNotification
+  setNotification,
+  onBack,
+  filter,
+  setFilter
 }: { 
   items: MenuItem[], 
   showForm: boolean, 
   setShowForm: (v: boolean) => void,
-  setNotification: (v: {message: string, type: 'success' | 'error'} | null) => void
+  setNotification: (v: {message: string, type: 'success' | 'error'} | null) => void,
+  onBack: () => void,
+  filter: Category | 'All',
+  setFilter: (v: Category | 'All') => void
 }) {
+  const filteredItems = filter === 'All' ? items : items.filter(i => i.category === filter);
+
   const [formData, setFormData] = useState<Partial<MenuItem>>({
     name: '',
     description: '',
@@ -376,6 +447,8 @@ function MenuManagement({
     image: '',
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [syncingCount, setSyncingCount] = useState(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -399,65 +472,71 @@ function MenuManagement({
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+
     if (!formData.name || !formData.price || !formData.image) {
       alert('Please fill in all required fields (Name, Price, and Photo)');
       return;
     }
     
-    // Truly instant: Save to Firestore immediately with local URL
-    const dataToSave = { ...formData };
+    // 1. Prepare data
+    const itemData = { ...formData };
     const fileToUpload = selectedFile;
+    const itemCategory = formData.category || (filter !== 'All' ? filter : 'Shawarma');
     
-    // Ensure category is present
-    if (!dataToSave.category) dataToSave.category = 'Shawarma';
-    
+    // 2. Clear form immediately for "Instant" feel
     setShowForm(false);
     setFormData({ name: '', description: '', price: 0, category: 'Shawarma', image: '' });
     setSelectedFile(null);
-
-  const syncTask = async () => {
+    setSyncingCount(prev => prev + 1);
+    
+    // 3. Background Sync Task
+    const startSync = async () => {
       try {
-        // Step 1: Create the document in Firestore with the local preview URL
-        const docRef = await menuService.add({
-          name: dataToSave.name || '',
-          description: dataToSave.description || '',
-          price: dataToSave.price || 0,
-          category: dataToSave.category || 'Shawarma',
-          image: dataToSave.image || '',
-        } as MenuItem);
+        let finalImageUrl = itemData.image || '';
 
-        // Step 2: Now upload the heavy image in the background
+        // Step 1: Upload the photo if it's a new file
         if (fileToUpload) {
           const storageRef = ref(storage, `menu/${Date.now()}_${fileToUpload.name}`);
           const snapshot = await uploadBytes(storageRef, fileToUpload);
-          const finalImageUrl = await getDownloadURL(snapshot.ref);
-
-          // Step 3: Update with the permanent cloud URL
-          await menuService.update(docRef.id, { image: finalImageUrl });
+          finalImageUrl = await getDownloadURL(snapshot.ref);
         }
+
+        // Step 2: Create the document
+        await menuService.add({
+          name: itemData.name || '',
+          description: itemData.description || '',
+          price: Number(itemData.price) || 0,
+          category: itemCategory,
+          image: finalImageUrl,
+        } as MenuItem);
         
-        setNotification({ message: 'Item saved successfully!', type: 'success' });
+        setNotification({ message: `Successfully added "${itemData.name}"`, type: 'success' });
       } catch (error: any) {
-        console.error('Background sync failed', error);
-        setNotification({ 
-          message: error.message?.includes('permission-denied') 
-            ? 'Access Denied: Please check if you are logged in as admin.'
-            : 'Failed to save item. Please try again.', 
-          type: 'error' 
-        });
+        console.error('Background Sync failed:', error);
+        alert(`CRITICAL ERROR: Failed to save "${itemData.name}". \n\nReason: ${error.message}\n\nPlease try again or check your internet.`);
+        setNotification({ message: 'Sync failed: Check alerts', type: 'error' });
+      } finally {
+        setSyncingCount(prev => Math.max(0, prev - 1));
       }
     };
-    
-    syncTask();
+
+    startSync();
   };
 
   const toggleAvailability = async (id: string, current: boolean) => {
     await menuService.update(id, { isAvailable: !current });
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Delete this item?')) {
-      await menuService.delete(id);
+  const handleDelete = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to PERMANENTLY delete "${name}"?`)) {
+      try {
+        await menuService.delete(id);
+        setNotification({ message: `Deleted "${name}"`, type: 'success' });
+      } catch (error: any) {
+        console.error('Delete failed:', error);
+        alert(`Delete failed: ${error.message}`);
+      }
     }
   };
 
@@ -474,12 +553,50 @@ function MenuManagement({
 
   return (
     <div className="space-y-8">
+      {/* Sync Status Banner */}
+      <AnimatePresence>
+        {syncingCount > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-8 right-8 z-50 bg-gold-500 text-sham-dark px-6 py-4 rounded-2xl shadow-2xl font-black flex items-center gap-3 border-2 border-white/20"
+          >
+            <Loader2 className="w-5 h-5 animate-spin" />
+            SYNCING {syncingCount} ITEM{syncingCount > 1 ? 'S' : ''}...
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-serif gold-text-gradient mb-2">Menu Collection</h2>
-          <p className="text-gold-500/40 uppercase tracking-widest text-sm text-left">Update your digital display</p>
+          <div className="flex items-center gap-4">
+             <p className="text-gold-500/40 uppercase tracking-widest text-sm text-left">Internal Database</p>
+             <div className="flex gap-2 bg-sham-surface p-1 rounded-xl border border-sham-border">
+                {['All', ...categories].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setFilter(c as any)}
+                    className={cn(
+                      "px-3 py-1 text-[10px] uppercase font-bold tracking-widest rounded-lg transition-all",
+                      filter === c ? "bg-gold-500 text-sham-dark" : "text-gold-500/40 hover:text-gold-500"
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+             </div>
+          </div>
         </div>
         <div className="flex gap-4">
+          <button 
+            onClick={onBack}
+            className="px-8 py-4 bg-red-600/10 border border-red-600/20 text-red-500 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+          >
+            <LogOut className="w-5 h-5" />
+            Exit Admin
+          </button>
           <button 
             onClick={handleSeed}
             className="px-8 py-4 bg-sham-surface border border-gold-500/20 text-gold-500 rounded-2xl font-bold hover:bg-gold-500/10 transition-all"
@@ -497,45 +614,54 @@ function MenuManagement({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {items.map(item => (
-          <div key={item.id} className="bg-sham-surface border border-sham-border rounded-3xl overflow-hidden group">
-            <div className="relative h-48">
-              <img 
-                src={item.image} 
-                alt={item.name} 
-                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute top-4 left-4">
-                <span className="px-3 py-1 bg-sham-dark/80 backdrop-blur-md rounded-full text-[10px] uppercase font-black text-gold-500 border border-gold-500/20">
-                  {item.category}
-                </span>
+        {filteredItems.length > 0 ? (
+          filteredItems.map(item => (
+            <div key={item.id} className="bg-sham-surface border border-sham-border rounded-3xl overflow-hidden group">
+              <div className="relative h-48">
+                <img 
+                  src={item.image} 
+                  alt={item.name} 
+                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute top-4 left-4">
+                  <span className="px-3 py-1 bg-sham-dark/80 backdrop-blur-md rounded-full text-[10px] uppercase font-black text-gold-500 border border-gold-500/20">
+                    {item.category}
+                  </span>
+                </div>
+              </div>
+              <div className="p-6">
+                <h3 className="text-xl font-serif mb-1">{item.name}</h3>
+                <p className="text-gold-400 font-bold mb-4">{formatPrice(item.price)}</p>
+                
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => toggleAvailability(item.id, item.isAvailable)}
+                    className={cn(
+                      "flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all",
+                      item.isAvailable ? "bg-green-600/20 text-green-400 border border-green-600/30" : "bg-gray-600/20 text-gray-400"
+                    )}
+                  >
+                    {item.isAvailable ? 'In Stock' : 'Out of Stock'}
+                  </button>
+                  <button 
+                      onClick={() => handleDelete(item.id, item.name)}
+                      className="p-3 bg-red-600/20 text-red-500 border border-red-600/30 rounded-xl hover:bg-red-600 hover:text-white transition-all group/delete relative"
+                      title="Delete Item"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="p-6">
-              <h3 className="text-xl font-serif mb-1">{item.name}</h3>
-              <p className="text-gold-400 font-bold mb-4">{formatPrice(item.price)}</p>
-              
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => toggleAvailability(item.id, item.isAvailable)}
-                  className={cn(
-                    "flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all",
-                    item.isAvailable ? "bg-green-600/20 text-green-400 border border-green-600/30" : "bg-gray-600/20 text-gray-400"
-                  )}
-                >
-                  {item.isAvailable ? 'In Stock' : 'Out of Stock'}
-                </button>
-                <button 
-                    onClick={() => handleDelete(item.id)}
-                    className="p-3 bg-red-600/20 text-red-500 border border-red-600/30 rounded-xl hover:bg-red-600 hover:text-white transition-all"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+          ))
+        ) : (
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-center bg-sham-surface/30 border-2 border-dashed border-sham-border rounded-[40px]">
+            <Utensils className="w-16 h-16 text-gold-500/20 mb-4" />
+            <h3 className="text-2xl font-serif text-gold-500/40">No items found in {filter}</h3>
+            <p className="text-sm text-gold-500/20 uppercase tracking-widest mt-2">Add a new item to get started</p>
           </div>
-        ))}
+        )}
       </div>
 
       <AnimatePresence>
@@ -665,9 +791,22 @@ function MenuManagement({
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-5 gold-gradient text-sham-dark rounded-xl font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+                  disabled={isSaving}
+                  className={cn(
+                    "flex-1 py-5 rounded-xl font-black uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-3",
+                    isSaving ? "bg-gold-500/50 cursor-not-allowed text-sham-dark" : "gold-gradient text-sham-dark hover:scale-[1.02]"
+                  )}
                 >
-                  Save Item
+                  {isSaving ? (
+                    <>
+                      <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="w-5 h-5 border-2 border-sham-dark border-t-transparent rounded-full"
+                      />
+                      Saving Item...
+                    </>
+                  ) : 'Save Item'}
                 </button>
               </div>
             </motion.form>

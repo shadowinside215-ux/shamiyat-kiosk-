@@ -45,14 +45,14 @@ export default function WelcomeScreen({ onStart, onAdmin }: WelcomeScreenProps) 
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => onStart('takeaway')}
+          onClick={() => window.location.href = 'https://glovoapp.com/fr/ma/technopolis/stores/shamyat-tec?utm_source=google&utm_medium=organic&utm_campaign=google_reserve_place_order_action'}
           className="flex flex-col items-center justify-center p-12 bg-sham-surface/80 border-2 border-gold-500/30 rounded-3xl hover:border-gold-500 transition-all group"
         >
           <div className="w-24 h-24 bg-gold-500/10 rounded-full flex items-center justify-center mb-6 group-hover:bg-gold-500/20 transition-colors">
             <ShoppingBag className="w-12 h-12 text-gold-500" />
           </div>
           <span className="text-3xl font-serif font-medium text-white mb-2">Take Away</span>
-          <span className="text-gold-400/60 uppercase tracking-widest text-sm">To Go</span>
+          <span className="text-gold-400/60 uppercase tracking-widest text-sm">Order Online (Glovo)</span>
         </motion.button>
       </div>
 

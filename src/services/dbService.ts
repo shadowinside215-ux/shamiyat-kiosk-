@@ -18,14 +18,20 @@ const ORDERS_COLLECTION = 'orders';
 
 export const menuService = {
   subscribe: (callback: (items: MenuItem[]) => void, onError?: (err: any) => void) => {
-    const q = query(collection(db, MENU_COLLECTION), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, MENU_COLLECTION));
     return onSnapshot(q, {
       next: (snapshot) => {
         const items = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as MenuItem[];
-        callback(items);
+        // Sort locally by createdAt if it exists, otherwise use fallback
+        const sortedItems = [...items].sort((a, b) => {
+          const tA = (a.createdAt as any)?.seconds || a.createdAt || 0;
+          const tB = (b.createdAt as any)?.seconds || b.createdAt || 0;
+          return tB - tA;
+        });
+        callback(sortedItems);
       },
       error: (err) => {
         console.error('Menu subscription error:', err);
@@ -35,12 +41,17 @@ export const menuService = {
   },
 
   getAll: async () => {
-    const q = query(collection(db, MENU_COLLECTION), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, MENU_COLLECTION));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
+    const items = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as MenuItem[];
+    return [...items].sort((a, b) => {
+      const tA = (a.createdAt as any)?.seconds || a.createdAt || 0;
+      const tB = (b.createdAt as any)?.seconds || b.createdAt || 0;
+      return tB - tA;
+    });
   },
 
   add: async (item: Omit<MenuItem, 'id' | 'createdAt'>) => {
@@ -64,14 +75,20 @@ export const menuService = {
 
 export const orderService = {
   subscribe: (callback: (orders: Order[]) => void, onError?: (err: any) => void) => {
-    const q = query(collection(db, ORDERS_COLLECTION), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, ORDERS_COLLECTION));
     return onSnapshot(q, {
       next: (snapshot) => {
         const orders = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as Order[];
-        callback(orders);
+        // Sort locally
+        const sortedOrders = [...orders].sort((a, b) => {
+          const tA = (a.createdAt as any)?.seconds || a.createdAt || 0;
+          const tB = (b.createdAt as any)?.seconds || b.createdAt || 0;
+          return tB - tA;
+        });
+        callback(sortedOrders);
       },
       error: (err) => {
         console.error('Orders subscription error:', err);
