@@ -447,8 +447,6 @@ function MenuManagement({
     image: '',
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [syncingCount, setSyncingCount] = useState(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -470,39 +468,38 @@ function MenuManagement({
     setFormData(prev => ({ ...prev, image: localUrl }));
   };
 
+  // Instant addition/deletion without loading screens
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSaving) return;
-
     if (!formData.name || !formData.price || !formData.image) {
       alert('Please fill in all required fields (Name, Price, and Photo)');
       return;
     }
     
-    // 1. Prepare data
+    // Prepare background data
     const itemData = { ...formData };
     const fileToUpload = selectedFile;
     const itemCategory = formData.category || (filter !== 'All' ? filter : 'Shawarma');
     
-    // 2. Clear form immediately for "Instant" feel
+    // INSTANT UI CLOSURE
     setShowForm(false);
+    setNotification({ message: `Adding "${itemData.name}"...`, type: 'success' });
+    
+    // Reset form immediately
     setFormData({ name: '', description: '', price: 0, category: 'Shawarma', image: '' });
     setSelectedFile(null);
-    setSyncingCount(prev => prev + 1);
     
-    // 3. Background Sync Task
-    const startSync = async () => {
+    // Background execution with NO UI LOCKS
+    const executeSync = async () => {
       try {
         let finalImageUrl = itemData.image || '';
 
-        // Step 1: Upload the photo if it's a new file
         if (fileToUpload) {
           const storageRef = ref(storage, `menu/${Date.now()}_${fileToUpload.name}`);
           const snapshot = await uploadBytes(storageRef, fileToUpload);
           finalImageUrl = await getDownloadURL(snapshot.ref);
         }
 
-        // Step 2: Create the document
         await menuService.add({
           name: itemData.name || '',
           description: itemData.description || '',
@@ -510,18 +507,13 @@ function MenuManagement({
           category: itemCategory,
           image: finalImageUrl,
         } as MenuItem);
-        
-        setNotification({ message: `Successfully added "${itemData.name}"`, type: 'success' });
       } catch (error: any) {
-        console.error('Background Sync failed:', error);
-        alert(`CRITICAL ERROR: Failed to save "${itemData.name}". \n\nReason: ${error.message}\n\nPlease try again or check your internet.`);
-        setNotification({ message: 'Sync failed: Check alerts', type: 'error' });
-      } finally {
-        setSyncingCount(prev => Math.max(0, prev - 1));
+        console.error('Add failed:', error);
+        alert(`Could not save item: ${error.message}`);
       }
     };
 
-    startSync();
+    executeSync();
   };
 
   const toggleAvailability = async (id: string, current: boolean) => {
@@ -529,14 +521,13 @@ function MenuManagement({
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to PERMANENTLY delete "${name}"?`)) {
-      try {
-        await menuService.delete(id);
-        setNotification({ message: `Deleted "${name}"`, type: 'success' });
-      } catch (error: any) {
-        console.error('Delete failed:', error);
-        alert(`Delete failed: ${error.message}`);
-      }
+    // ONE-CLICK DELETE as requested
+    try {
+      await menuService.delete(id);
+      setNotification({ message: `Deleted "${name}"`, type: 'success' });
+    } catch (error: any) {
+      console.error('Delete failed:', error);
+      alert(`Delete failed: ${error.message}`);
     }
   };
 
@@ -553,21 +544,6 @@ function MenuManagement({
 
   return (
     <div className="space-y-8">
-      {/* Sync Status Banner */}
-      <AnimatePresence>
-        {syncingCount > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-8 right-8 z-50 bg-gold-500 text-sham-dark px-6 py-4 rounded-2xl shadow-2xl font-black flex items-center gap-3 border-2 border-white/20"
-          >
-            <Loader2 className="w-5 h-5 animate-spin" />
-            SYNCING {syncingCount} ITEM{syncingCount > 1 ? 'S' : ''}...
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-serif gold-text-gradient mb-2">Menu Collection</h2>
@@ -646,7 +622,7 @@ function MenuManagement({
                   </button>
                   <button 
                       onClick={() => handleDelete(item.id, item.name)}
-                      className="p-3 bg-red-600/20 text-red-500 border border-red-600/30 rounded-xl hover:bg-red-600 hover:text-white transition-all group/delete relative"
+                      className="p-3 bg-red-600/20 text-red-500 border border-red-600/30 rounded-xl hover:bg-red-600 hover:text-white transition-all group relative"
                       title="Delete Item"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -791,22 +767,9 @@ function MenuManagement({
                 </button>
                 <button 
                   type="submit"
-                  disabled={isSaving}
-                  className={cn(
-                    "flex-1 py-5 rounded-xl font-black uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-3",
-                    isSaving ? "bg-gold-500/50 cursor-not-allowed text-sham-dark" : "gold-gradient text-sham-dark hover:scale-[1.02]"
-                  )}
+                  className="flex-1 py-5 gold-gradient text-sham-dark rounded-xl font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
                 >
-                  {isSaving ? (
-                    <>
-                      <motion.div 
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                        className="w-5 h-5 border-2 border-sham-dark border-t-transparent rounded-full"
-                      />
-                      Saving Item...
-                    </>
-                  ) : 'Save Item'}
+                  Save Item
                 </button>
               </div>
             </motion.form>

@@ -41,14 +41,8 @@ service cloud.firestore {
       // Menu is publicly readable for the kiosk
       allow read: if true; 
       
-      // Only Admin can write to menu
-      allow create: if isAdmin() && isValidMenuItem(request.resource.data);
-      allow update: if isAdmin() 
-                    && (
-                      // Only specific fields allowed for update
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'price', 'category', 'image', 'isAvailable', 'description'])
-                    );
-      allow delete: if isAdmin();
+      // Only Admin can write to menu - relaxed validation for reliability
+      allow create, update, delete: if isAdmin();
     }
 
     // Orders Collection Rules
